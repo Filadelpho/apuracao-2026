@@ -29,6 +29,8 @@ export class Mapa {
   private cores = { vazio: "", borda: "", bordaUf: "", destaque: "" };
 
   onSelecionar: (codigo: string | null) => void = () => {};
+  /** Mouse sobre um município (x, y relativos ao recipiente); null ao sair */
+  onPassar: (codigo: string | null, x: number, y: number) => void = () => {};
 
   constructor(private recipiente: HTMLElement) {
     this.canvas = recipiente.querySelector("canvas")!;
@@ -70,10 +72,13 @@ export class Mapa {
         this.destaque = codigo;
         this.desenhar();
       }
+      const r = this.canvas.getBoundingClientRect();
+      this.onPassar(codigo, e.clientX - r.left, e.clientY - r.top);
     });
     this.canvas.addEventListener("pointerleave", () => {
       this.destaque = null;
       this.desenhar();
+      this.onPassar(null, 0, 0);
     });
     this.canvas.addEventListener("click", (e) => this.onSelecionar(this.codigoEm(e)));
 

@@ -1,5 +1,5 @@
 import "./estilo.css";
-import { CANDIDATOS, REGIOES, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
+import { CANDIDATOS, REGIOES, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
 import { Mapa } from "./mapa";
 
 type Modo = "resultado" | "mudanca";
@@ -191,6 +191,30 @@ const mapa = new Mapa(document.getElementById("mapa")!);
 mapa.onSelecionar = (codigo) => {
   selecionado = codigo;
   renderDetalhe();
+};
+
+const dicaMapa = document.getElementById("dica-mapa")!;
+const nomeProprio = (nome: string) =>
+  nome
+    .toLowerCase()
+    .replace(/(^|[\s-])(\p{L})/gu, (_, sep, letra) => sep + letra.toUpperCase())
+    .replace(/ (D[aeo]s?|E) /g, (p) => p.toLowerCase())
+    .replace(/D'(\p{L})/gu, (_, letra) => "d'" + letra.toUpperCase());
+
+mapa.onPassar = (codigo, x, y) => {
+  const uf = codigo && UF_IBGE[codigo.slice(0, 2)];
+  if (!uf) {
+    dicaMapa.hidden = true;
+    return;
+  }
+  const municipio = atual().municipios[codigo];
+  dicaMapa.innerHTML = `<b>${uf.toUpperCase()}</b>${municipio ? `<span>${nomeProprio(municipio.nome)}</span>` : ""}`;
+  dicaMapa.hidden = false;
+  // Perto das bordas, a caixa vai para o outro lado do cursor para não ser cortada
+  const caixa = dicaMapa.parentElement!;
+  const px = x + 14 + dicaMapa.offsetWidth > caixa.clientWidth ? x - 14 - dicaMapa.offsetWidth : x + 14;
+  const py = y + 14 + dicaMapa.offsetHeight > caixa.clientHeight ? y - 14 - dicaMapa.offsetHeight : y + 14;
+  dicaMapa.style.transform = `translate(${px}px, ${py}px)`;
 };
 
 document.querySelectorAll<HTMLButtonElement>("[data-modo]").forEach((b) =>
