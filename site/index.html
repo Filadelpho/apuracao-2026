@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Apuração 2026 · 2º turno</title>
+    <meta name="description" content="Apuração do 2º turno para presidente, município por município, com dados oficiais do TSE." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="topo">
+      <div class="marca">
+        <h1>Apuração 2026</h1>
+        <span class="turno" id="turno">2º turno · 25 de outubro</span>
+      </div>
+      <p class="status" id="status">Carregando…</p>
+    </header>
+
+    <main class="grade">
+      <section class="placar" id="placar" aria-live="polite"></section>
+
+      <section class="mapa-bloco">
+        <div class="mapa-controles">
+          <div class="abas" role="tablist" aria-label="O que o mapa mostra">
+            <button role="tab" data-modo="resultado" aria-selected="true">Quem lidera</button>
+            <button role="tab" data-modo="mudanca" aria-selected="false">Mudança vs. 1º turno</button>
+          </div>
+          <div class="legenda" id="legenda"></div>
+        </div>
+        <div class="mapa" id="mapa">
+          <canvas></canvas>
+          <div class="zoom">
+            <button data-zoom="in" aria-label="Aproximar">+</button>
+            <button data-zoom="out" aria-label="Afastar">−</button>
+          </div>
+        </div>
+        <aside class="detalhe" id="detalhe" hidden></aside>
+      </section>
+
+      <section class="regioes" id="regioes"></section>
+    </main>
+
+    <footer class="rodape">
+      Fonte: TSE (resultados.tse.jus.br) · Malha municipal: IBGE · Projeto independente, sem vínculo com o TSE.
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

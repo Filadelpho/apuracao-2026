@@ -1,0 +1,27 @@
+{
+  "name": "apuracao-pt-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "malha": "mapshaper ../dados/base/malha_municipios.geojson name=municipios -simplify 6% weighted keep-shapes -each \"uf=codarea.slice(0,2)\" -dissolve uf + name=ufs -o target=* format=topojson quantization=100000 public/dados/malha.topo.json"
+  },
+  "dependencies": {
+    "d3-geo": "3.1.1",
+    "d3-selection": "3.0.0",
+    "d3-zoom": "3.0.0",
+    "topojson-client": "3.1.0"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "3.1.1",
+    "@types/d3-selection": "3.0.12",
+    "@types/d3-zoom": "3.0.9",
+    "@types/topojson-client": "3.1.5",
+    "mapshaper": "0.7.92",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}
