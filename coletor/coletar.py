@@ -13,12 +13,11 @@ Uso:
 
 import argparse
 import asyncio
-import json
-import os
 from datetime import datetime
 from pathlib import Path
 
 import tse
+from saida import Saida
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -27,26 +26,14 @@ def agora() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def gravar_json(caminho: Path, dados) -> None:
-    """Escreve num temporário e troca, para o site nunca ler um arquivo pela metade."""
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    temp = caminho.with_suffix(".tmp")
-    temp.write_text(json.dumps(dados, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    os.replace(temp, caminho)
-
-
 class Coletor:
     def __init__(self, turno: str, saida: Path, brutos: Path):
         self.ele = tse.ELEICOES[turno]
-        self.saida = saida
+        self.saida = Saida(saida)
         self.brutos = brutos
         self.municipios: dict[str, dict] = {}  # código TSE -> {uf, ibge, nome}
         self.versao: dict[str, tuple] = {}     # código TSE -> (hora totalização, seções) já baixada
         self.estado = {"br": None, "ufs": {}, "municipios": {}}
-        self.historico: list[dict] = []
-        caminho_hist = saida / "historico.json"
-        if caminho_hist.exists():
-            self.historico = json.loads(caminho_hist.read_text(encoding="utf-8"))
 
     def arquivar(self, pasta: Path, url: str, texto: str) -> None:
         pasta.mkdir(parents=True, exist_ok=True)
@@ -104,18 +91,15 @@ class Coletor:
             self.estado["municipios"][chave] = {"uf": m["uf"], "nome": m["nome"], **tse.enxuto(tse.resumir(r[1]))}
             self.versao[cd] = versao
 
-        if not self.estado["br"]:
-            print(f"[{agora()}] sem resultado do Brasil ainda")
+        if not br:
+            print(f"[{agora()}] sem resultado do Brasil nesta rodada")
             return False
 
         # 4. Saída para o site
         br_enx = self.estado["br"]
-        self.estado["gerado"] = tse.resumir(br[1])["gerado"] if br else agora()
-        gravar_json(self.saida / "agora.json", self.estado)
-        ponto = {"hora": self.estado["gerado"], "secoes": br_enx["secoes"], "13": br_enx["13"], "22": br_enx["22"], "validos": br_enx["validos"]}
-        if not self.historico or self.historico[-1]["secoes"] != ponto["secoes"]:
-            self.historico.append(ponto)
-            gravar_json(self.saida / "historico.json", self.historico)
+        resumo_br = tse.resumir(br[1])
+        self.estado["gerado"] = resumo_br["gerado"]
+        self.saida.publicar(self.estado, resumo_br["secoes"]["apuradas"])
 
         print(
             f"[{agora()}] {br_enx['secoes']:.2f}% das seções · Lula {br_enx['13']:,} · Flávio {br_enx['22']:,}"
