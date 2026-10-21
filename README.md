@@ -31,6 +31,8 @@ Projeto independente, sem vínculo com o TSE nem com o seuimposto.com.
   são JWS (JSON assinado com EdDSA pelo TSE). Os arquivos originais são guardados sem alteração em
   `dados/brutos/`, o que permite verificar a assinatura depois.
 - **Malha municipal**: API de malhas do IBGE (`servicodados.ibge.gov.br/api/v3/malhas`).
+- **Fotos dos candidatos**: fotos oficiais publicadas pelo TSE no mesmo feed, com o fundo branco
+  removido por `coletor/fotos.py` para aparecerem sobre a cor de cada partido.
 
 ### Arquivos do TSE usados
 
@@ -49,8 +51,9 @@ Pré-requisitos: Python 3.12 e Node.js 24.
 ```bash
 # coletor
 python -m venv coletor/.venv
-coletor/.venv/Scripts/python -m pip install httpx==0.28.1
+coletor/.venv/Scripts/python -m pip install -r coletor/requirements.txt
 coletor/.venv/Scripts/python coletor/preparar_base.py      # 1º turno + malha do IBGE (~5 min)
+coletor/.venv/Scripts/python coletor/fotos.py              # fotos oficiais dos candidatos, sem fundo
 
 # site
 npm --prefix site install
@@ -78,7 +81,7 @@ que tiveram seções novas.
 ## Estrutura
 
 ```
-coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py
+coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py, fotos.py
 site/      Vite + TypeScript + d3-geo; mapa em canvas
 analise/   notebooks (depois da eleição)
 dados/     downloads e arquivo bruto (fora do git)

@@ -93,8 +93,20 @@ button { font: inherit; color: inherit; }
 .placar-cands { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 .cand { display: flex; flex-direction: column; min-width: 0; }
 .cand-22 { text-align: right; }
-.cand-nome { font-weight: 500; }
-.cand-nome small { color: var(--texto-2); font-weight: 400; margin-left: 4px; white-space: nowrap; }
+.cand-id { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.cand-22 .cand-id { flex-direction: row-reverse; }
+.cand-foto {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  object-position: 50% 12%;
+}
+.cand-13 .cand-foto { background: var(--lula); }
+.cand-22 .cand-foto { background: var(--flavio); }
+.cand-nome { font-weight: 500; line-height: 1.25; min-width: 0; }
+.cand-nome small { display: block; font-weight: 400; font-size: 14px; white-space: nowrap; }
 .cand-13 .cand-nome small { color: var(--lula); }
 .cand-22 .cand-nome small { color: var(--flavio); }
 .cand-pct { font: 400 clamp(30px, 10vw, 44px)/1.1 var(--serifa); font-variant-numeric: tabular-nums; }

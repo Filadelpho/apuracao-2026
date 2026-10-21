@@ -82,7 +82,10 @@ function renderPlacar() {
     const c = CANDIDATOS[n];
     const pct = br.validos ? br[n] / br.validos : 0;
     return `<div class="cand cand-${n}">
-      <span class="cand-nome">${c.nome} <small>${c.partido} ${n}</small></span>
+      <div class="cand-id">
+        <img class="cand-foto" src="${BASE}fotos/${n}.png" alt="${c.nome}" width="56" height="56" />
+        <span class="cand-nome">${c.nome}<small>${c.partido} ${n}</small></span>
+      </div>
       <span class="cand-pct">${fmt.pct(pct)}</span>
       <span class="cand-votos">${fmt.num(br[n])} votos</span>
     </div>`;
