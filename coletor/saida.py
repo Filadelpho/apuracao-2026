@@ -1,6 +1,7 @@
 """Arquivos que o site lê, escritos pelo coletor real e pelo simulador.
 
-  agora.json      estado atual: Brasil, UFs e municípios (formato enxuto)
+  versao.json     só a hora da última atualização: o site checa este e baixa o resto quando muda
+  agora.json      estado atual: Brasil e UFs completos; municípios compactos (ver compactar)
   historico.json  um ponto do Brasil por atualização (curva e linha do tempo)
   eventos.json    "Últimas atualizações": parciais, viradas e estados concluídos
 """
@@ -24,6 +25,19 @@ def _ler(caminho: Path, padrao):
     return json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else padrao
 
 
+# Ordem dos campos de cada município em agora.json; nome, UF e eleitores o site tira do 1º turno
+CAMPOS_MUNICIPIO = ["13", "22", "comparecimento", "apurados", "secoes"]
+
+
+def compactar(estado: dict) -> dict:
+    """Municípios viram listas curtas; no 2º turno os válidos são só 13 + 22, então nem vão no arquivo."""
+    municipios = {
+        codigo: [m.get(campo, 0) for campo in CAMPOS_MUNICIPIO]
+        for codigo, m in estado["municipios"].items()
+    }
+    return {**estado, "campos": CAMPOS_MUNICIPIO, "municipios": municipios}
+
+
 def _lider(v: dict) -> str | None:
     if v["13"] == v["22"]:
         return None
@@ -43,10 +57,15 @@ class Saida:
         self.concluidas = {e["uf"] for e in self.eventos if e["tipo"] == "uf"}
 
     def publicar(self, estado: dict, secoes_apuradas: int) -> None:
+        gravar_json(self.pasta / "agora.json", compactar(estado))
+        self._registrar(estado, secoes_apuradas)
+        # Por último: quando o site vê a hora nova, os outros arquivos já estão prontos
+        gravar_json(self.pasta / "versao.json", {"gerado": estado["gerado"]})
+
+    def _registrar(self, estado: dict, secoes_apuradas: int) -> None:
+        """Acrescenta o ponto da curva e os eventos, se houve seções novas."""
         br = estado["br"]
         hora = estado["gerado"]
-        gravar_json(self.pasta / "agora.json", estado)
-
         anterior = self.historico[-1] if self.historico else None
         if anterior and anterior.get("st") == secoes_apuradas:
             return

@@ -28,6 +28,34 @@ export type Estado = {
   municipios: Record<string, Municipio>;
 };
 
+/**
+ * agora.json do 2º turno: municípios como listas na ordem de `campos`
+ * (ex.: ["13", "22", "comparecimento", "apurados", "secoes"]), sem nome, UF e eleitores.
+ */
+export type EstadoCompacto = Omit<Estado, "municipios"> & { campos: string[]; municipios: Record<string, number[]> };
+
+/** Remonta os municípios do arquivo compacto, completando nome, UF e eleitores com o 1º turno */
+export function expandir(compacto: EstadoCompacto, base: Estado): Estado {
+  const municipios: Record<string, Municipio> = {};
+  for (const [codigo, valores] of Object.entries(compacto.municipios)) {
+    const ref = base.municipios[codigo];
+    const v = Object.fromEntries(compacto.campos.map((campo, i) => [campo, valores[i]])) as Record<string, number>;
+    municipios[codigo] = {
+      uf: ref?.uf ?? "",
+      nome: ref?.nome ?? codigo,
+      eleitores: ref?.eleitores ?? v.apurados ?? 0,
+      "13": v["13"],
+      "22": v["22"],
+      outros: 0,
+      validos: v["13"] + v["22"],
+      comparecimento: v.comparecimento,
+      apurados: v.apurados,
+      secoes: v.secoes,
+    };
+  }
+  return { ...compacto, municipios };
+}
+
 export const CANDIDATOS = {
   "13": { nome: "Lula", curto: "Lula", partido: "PT", cor: "var(--lula)" },
   "22": { nome: "Flávio Bolsonaro", curto: "Flávio", partido: "PL", cor: "var(--flavio)" },

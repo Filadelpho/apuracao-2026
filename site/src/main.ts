@@ -1,5 +1,5 @@
 import "./estilo.css";
-import { CANDIDATOS, NOMES_UF, UF_IBGE, carregar, fatiaLula, fmt, horaCurta, pctSecoes, taxaComparecimento, type Estado, type Evento, type Ponto, type Votos } from "./dados";
+import { CANDIDATOS, NOMES_UF, UF_IBGE, carregar, expandir, fatiaLula, fmt, horaCurta, type EstadoCompacto, pctSecoes, taxaComparecimento, type Estado, type Evento, type Ponto, type Votos } from "./dados";
 import { Mapa } from "./mapa";
 import { montarBusca, type Item } from "./busca";
 import { renderAtualizacoes, renderCurva, renderRegioes } from "./paineis";
@@ -398,14 +398,25 @@ document.addEventListener("fullscreenchange", () => {
 });
 
 /** Busca o 2º turno; devolve false se ainda não há dados */
+let versaoCarregada: string | null = null;
+
+/**
+ * Checa versao.json (poucos bytes) e só baixa os arquivos grandes quando há atualização nova.
+ * Devolve false se nada mudou ou se o 2º turno ainda não começou.
+ */
 async function carregarSegundo() {
-  // Só pede o histórico e os eventos depois que o 2º turno começou
-  const novo = await carregar(URL_2T);
-  if (!novo) return false;
-  const [hist, evs] = await Promise.all([carregar<Ponto[]>(`${PASTA_2T}historico.json`), carregar<Evento[]>(`${PASTA_2T}eventos.json`)]);
-  segundo = novo;
+  const versao = await carregar<{ gerado: string }>(`${PASTA_2T}versao.json`);
+  if (!versao || versao.gerado === versaoCarregada) return false;
+  const [compacto, hist, evs] = await Promise.all([
+    carregar<EstadoCompacto>(URL_2T),
+    carregar<Ponto[]>(`${PASTA_2T}historico.json`),
+    carregar<Evento[]>(`${PASTA_2T}eventos.json`),
+  ]);
+  if (!compacto) return false;
+  segundo = expandir(compacto, primeiro);
   historico = hist;
   eventos = evs;
+  versaoCarregada = versao.gerado;
   return true;
 }
 
