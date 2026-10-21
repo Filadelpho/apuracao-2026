@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 import tse
+from publicar import Publicador
 from saida import Saida
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -114,7 +115,10 @@ async def main():
     p.add_argument("--intervalo", type=int, default=30, help="segundos entre rodadas")
     p.add_argument("--uma-vez", action="store_true", help="faz uma rodada e para")
     p.add_argument("--saida", type=Path, help="pasta dos JSON do site (padrão: site/public/dados/<turno>)")
+    p.add_argument("--publicar", action="store_true", help="publica o site no Vercel enquanto coleta")
+    p.add_argument("--publicar-a-cada", type=int, default=300, help="segundos entre publicações (padrão: 300)")
     args = p.parse_args()
+    publicador = Publicador(args.publicar_a_cada) if args.publicar else None
 
     saida = args.saida or RAIZ / "site" / "public" / "dados" / args.turno
     brutos = RAIZ / "dados" / "brutos" / args.turno
@@ -129,10 +133,21 @@ async def main():
             except Exception as erro:  # rede instável não pode derrubar a noite inteira
                 print(f"[{agora()}] erro na rodada: {erro!r}; tentando de novo")
                 terminou = False
+            # Só publica depois que a apuração começou (antes disso o site já mostra a contagem regressiva)
+            if publicador and coletor.estado["br"] and coletor.estado["br"]["validos"] > 0:
+                if terminou:
+                    # Garante que o resultado final vá ao ar, mesmo fora do intervalo
+                    await publicador.esperar()
+                    publicador.talvez_publicar(forcar=True)
+                    await publicador.esperar()
+                else:
+                    publicador.talvez_publicar()
             if args.uma_vez or terminou:
                 break
             espera = args.intervalo - (asyncio.get_running_loop().time() - inicio)
             await asyncio.sleep(max(5, espera))
+    if publicador:
+        await publicador.esperar()
     print(f"[{agora()}] coleta encerrada")
 
 

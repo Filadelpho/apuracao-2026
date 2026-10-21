@@ -7,3 +7,6 @@ site/dist/
 # Dados gerados ou baixados (reproduzíveis com os scripts do coletor)
 /dados/
 site/public/dados/2t/
+
+.vercel
+.env*

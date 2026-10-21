@@ -63,14 +63,23 @@ npm --prefix site run malha                                 # simplifica a malha
 npm --prefix site run dev
 ```
 
-No domingo:
+### No dia da apuração (25/10)
+
+1. Antes das 17h: `coletor/.venv/Scripts/python coletor/simular.py --limpar` (garante que não há dado simulado).
+2. Deixe o computador sem entrar em suspensão e ligado na tomada.
+3. Às 17h:
 
 ```bash
-coletor/.venv/Scripts/python coletor/coletar.py --turno 2t --intervalo 30
+coletor/.venv/Scripts/python coletor/coletar.py --turno 2t --intervalo 30 --publicar
 ```
 
 A cada rodada o coletor lê o andamento das 28 UFs (27 + exterior) e baixa só os municípios
-que tiveram seções novas.
+que tiveram seções novas. Com `--publicar`, ele também publica o site no Vercel a cada
+5 minutos (e uma última vez quando a apuração termina). O plano gratuito permite 100
+publicações por dia, contando os envios ao GitHub, então **não faça commits nesse dia**.
+
+A publicação usa a CLI do Vercel (`site/node_modules/.bin/vercel`), que precisa de
+`vercel login` e `vercel link` feitos uma vez na raiz do repositório.
 
 ### Ensaio com dados simulados
 
@@ -96,7 +105,7 @@ Sempre rode `--limpar` antes de publicar o site.
 ## Estrutura
 
 ```
-coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py, saida.py, simular.py, fotos.py
+coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py, saida.py, publicar.py, simular.py, fotos.py
 site/      Vite + TypeScript + d3-geo; mapa em canvas
 analise/   notebooks (depois da eleição)
 dados/     downloads e arquivo bruto (fora do git)
