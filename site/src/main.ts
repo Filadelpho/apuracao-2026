@@ -399,12 +399,10 @@ document.addEventListener("fullscreenchange", () => {
 
 /** Busca o 2º turno; devolve false se ainda não há dados */
 async function carregarSegundo() {
-  const [novo, hist, evs] = await Promise.all([
-    carregar(URL_2T),
-    carregar<Ponto[]>(`${PASTA_2T}historico.json`),
-    carregar<Evento[]>(`${PASTA_2T}eventos.json`),
-  ]);
+  // Só pede o histórico e os eventos depois que o 2º turno começou
+  const novo = await carregar(URL_2T);
   if (!novo) return false;
+  const [hist, evs] = await Promise.all([carregar<Ponto[]>(`${PASTA_2T}historico.json`), carregar<Evento[]>(`${PASTA_2T}eventos.json`)]);
   segundo = novo;
   historico = hist;
   eventos = evs;

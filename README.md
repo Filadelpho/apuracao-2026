@@ -1,5 +1,7 @@
 # Apuração 2026 · 2º turno
 
+**Site:** https://apuracao-2026-iota.vercel.app
+
 Projeto de dados sobre a apuração da eleição presidencial brasileira de 2026, com duas partes:
 
 1. **Coletor**: grava o feed oficial do TSE minuto a minuto durante a apuração do 2º turno (25/10/2026).
