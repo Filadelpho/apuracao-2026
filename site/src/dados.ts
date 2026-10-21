@@ -6,10 +6,18 @@ export type Votos = {
   outros: number;
   validos: number;
   eleitores: number;
+  /** Eleitores das seções já apuradas; ausente nos dados finais do 1º turno (= eleitores) */
+  apurados?: number;
   comparecimento: number;
   /** % de seções apuradas; ausente nos dados finais do 1º turno */
   secoes?: number;
 };
+
+/** Comparecimento entre os eleitores das seções já apuradas */
+export function taxaComparecimento(v: Votos): number | null {
+  const base = v.apurados ?? v.eleitores;
+  return base ? v.comparecimento / base : null;
+}
 
 export type Municipio = Votos & { uf: string; nome: string };
 
@@ -69,6 +77,7 @@ export function somar(lista: Votos[]): Votos {
     total.outros += v.outros;
     total.validos += v.validos;
     total.eleitores += v.eleitores;
+    total.apurados = (total.apurados ?? 0) + (v.apurados ?? v.eleitores);
     total.comparecimento += v.comparecimento;
     secoesPonderadas += pctSecoes(v) * v.eleitores;
   }
@@ -76,15 +85,29 @@ export function somar(lista: Votos[]): Votos {
   return total;
 }
 
-export async function carregar(url: string): Promise<Estado | null> {
+/** Um ponto da curva: o Brasil a cada atualização (historico.json) */
+export type Ponto = { hora: string; secoes: number; st: number; "13": number; "22": number; validos: number };
+
+/** Uma linha de "Últimas atualizações" (eventos.json), mais recente primeiro */
+export type Evento =
+  | { hora: string; tipo: "inicio"; "13": number; "22": number }
+  | { hora: string; tipo: "parcial"; novas: number; "13": number; "22": number }
+  | { hora: string; tipo: "virada"; lider: "13" | "22"; secoes: number }
+  | { hora: string; tipo: "uf"; uf: string; lider: "13" | "22" | null; pct: number }
+  | { hora: string; tipo: "fim"; lider: "13" | "22" | null; pct: number };
+
+export async function carregar<T = Estado>(url: string): Promise<T | null> {
   try {
     const resp = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
     if (!resp.ok) return null;
-    return (await resp.json()) as Estado;
+    return (await resp.json()) as T;
   } catch {
     return null;
   }
 }
+
+/** "25/10/2026 18:24:00" -> "18h24" */
+export const horaCurta = (hora: string) => hora.slice(-8, -3).replace(":", "h");
 
 const nf = new Intl.NumberFormat("pt-BR");
 const pf = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

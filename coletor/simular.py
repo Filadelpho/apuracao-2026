@@ -8,6 +8,7 @@ antes de domingo; os arquivos são escritos onde o site lê o 2º turno.
 Uso:
   coletor\\.venv\\Scripts\\python.exe coletor\\simular.py                 # 90 passos, 1 a cada 2 s
   coletor\\.venv\\Scripts\\python.exe coletor\\simular.py --passos 40 --intervalo 0
+  coletor\\.venv\\Scripts\\python.exe coletor\\simular.py --intervalo 0 --ate 0.4  # para no meio da noite
   coletor\\.venv\\Scripts\\python.exe coletor\\simular.py --limpar         # apaga a simulação
 """
 
@@ -60,7 +61,7 @@ def preparar(sorteio: random.Random) -> list[dict]:
 
 
 def somar(partes: list[dict]) -> dict:
-    total = {"13": 0, "22": 0, "outros": 0, "validos": 0, "eleitores": 0, "comparecimento": 0}
+    total = {"13": 0, "22": 0, "outros": 0, "validos": 0, "eleitores": 0, "apurados": 0, "comparecimento": 0}
     ponderado = 0.0
     for p in partes:
         for k in total:
@@ -77,12 +78,13 @@ def momento(municipios: list[dict], t: float) -> dict:
     for m in municipios:
         fracao = min(1.0, max(0.0, (t - m["inicio"]) / m["duracao"]))
         if fracao == 0:
-            parcial = {"13": 0, "22": 0, "outros": 0, "validos": 0, "eleitores": m["eleitores"], "comparecimento": 0, "secoes": 0.0}
+            parcial = {"13": 0, "22": 0, "outros": 0, "validos": 0, "eleitores": m["eleitores"], "apurados": 0, "comparecimento": 0, "secoes": 0.0}
         else:
             lula, flavio = round(m["final"]["13"] * fracao), round(m["final"]["22"] * fracao)
             parcial = {
                 "13": lula, "22": flavio, "outros": 0, "validos": lula + flavio,
-                "eleitores": m["eleitores"], "comparecimento": round(m["comparecimento"] * fracao),
+                "eleitores": m["eleitores"], "apurados": round(m["eleitores"] * fracao),
+                "comparecimento": round(m["comparecimento"] * fracao),
                 "secoes": round(100 * fracao, 2),
             }
             estado["municipios"][m["chave"]] = {"uf": m["uf"], "nome": m["nome"], **parcial}
@@ -97,6 +99,7 @@ def main():
     p.add_argument("--passos", type=int, default=90)
     p.add_argument("--intervalo", type=float, default=2, help="segundos reais entre passos")
     p.add_argument("--semente", type=int, default=2026)
+    p.add_argument("--ate", type=float, default=1.0, help="para nessa fração da noite (0 a 1), ex.: 0.4")
     p.add_argument("--limpar", action="store_true", help="apaga os arquivos simulados e sai")
     args = p.parse_args()
 
@@ -111,7 +114,7 @@ def main():
     saida = Saida(PASTA_2T)
     print(f"Simulando {len(municipios)} municípios em {args.passos} passos. Abra o site e acompanhe.")
 
-    for i in range(args.passos + 1):
+    for i in range(round(args.passos * args.ate) + 1):
         t = i / args.passos
         estado = momento(municipios, t * 1.05)  # 5% de folga para todos chegarem a 100%
         relogio = INICIO + DURACAO * t

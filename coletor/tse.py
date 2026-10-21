@@ -104,6 +104,7 @@ def resumir(payload: dict) -> dict:
         "andamento": payload.get("and"),
         "secoes": {"total": _int(s.get("ts")), "apuradas": _int(s.get("st")), "pct": _pct(s.get("pstn"))},
         "eleitores": _int(e.get("te")),
+        "eleitores_apurados": _int(e.get("est")),
         "comparecimento": _int(e.get("c")),
         "abstencao": _int(e.get("a")),
         "validos": _int(v.get("vv")),
@@ -125,6 +126,8 @@ def enxuto(resumo: dict) -> dict:
         "outros": resumo["validos"] - sum(principais.values()),
         "validos": resumo["validos"],
         "eleitores": resumo["eleitores"],
+        # Eleitores das seções já apuradas: base certa para o comparecimento durante a contagem
+        "apurados": resumo["eleitores_apurados"],
         "comparecimento": resumo["comparecimento"],
         "secoes": resumo["secoes"]["pct"],
     }

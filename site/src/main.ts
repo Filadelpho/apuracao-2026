@@ -1,14 +1,16 @@
 import "./estilo.css";
-import { CANDIDATOS, NOMES_UF, REGIOES, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
+import { CANDIDATOS, NOMES_UF, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, taxaComparecimento, type Estado, type Evento, type Ponto, type Votos } from "./dados";
 import { Mapa } from "./mapa";
 import { montarBusca, type Item } from "./busca";
+import { renderAtualizacoes, renderCurva, renderRegioes } from "./paineis";
 
 type Modo = "municipios" | "estados" | "vantagem" | "mudanca" | "candidato";
 type Numero = "13" | "22";
 
 const BASE = import.meta.env.BASE_URL;
 const URL_1T = `${BASE}dados/1t.json`;
-const URL_2T = `${BASE}dados/2t/agora.json`;
+const PASTA_2T = `${BASE}dados/2t/`;
+const URL_2T = `${PASTA_2T}agora.json`;
 const INTERVALO_MS = 30_000;
 
 const el = {
@@ -20,10 +22,14 @@ const el = {
   legenda: document.getElementById("legenda")!,
   detalhe: document.getElementById("detalhe")!,
   regioes: document.getElementById("regioes")!,
+  atualizacoes: document.getElementById("atualizacoes")!,
+  curva: document.getElementById("curva")!,
 };
 
 let primeiro: Estado;
 let segundo: Estado | null = null;
+let historico: Ponto[] | null = null;
+let eventos: Evento[] | null = null;
 let modo: Modo = "municipios";
 let candidato: Numero = "13";
 let selecionado: string | null = null;
@@ -160,7 +166,7 @@ function renderPlacar() {
       <i class="barra-meio"></i>
     </div>
     <dl class="placar-numeros">
-      <div><dt>Comparecimento</dt><dd>${br.eleitores ? fmt.pct1(br.comparecimento / br.eleitores) : "—"}</dd></div>
+      <div><dt>Comparecimento</dt><dd>${taxaComparecimento(br) != null ? fmt.pct1(taxaComparecimento(br)!) : "—"}</dd></div>
       <div><dt>Votos válidos</dt><dd>${fmt.num(br.validos)}</dd></div>
       ${segundo ? "" : `<div><dt>Outros candidatos</dt><dd>${br.validos ? fmt.pct1(br.outros / br.validos) : "—"}</dd></div>`}
     </dl>`;
@@ -226,7 +232,7 @@ function renderDetalhe() {
     <h3>${area.nome} ${selecionado!.startsWith("uf:") ? "" : `<small>${area.uf.toUpperCase()}</small>`}</h3>
     ${segundo ? `<p class="nota">${fmt.pct1(pctSecoes(m) / 100)} das seções apuradas</p>` : ""}
     ${linhaCandidatos(m)}
-    <p class="nota">Comparecimento ${m.eleitores ? fmt.pct1(m.comparecimento / m.eleitores) : "—"} · ${fmt.num(m.eleitores)} eleitores</p>
+    <p class="nota">Comparecimento ${taxaComparecimento(m) != null ? fmt.pct1(taxaComparecimento(m)!) : "—"} · ${fmt.num(m.eleitores)} eleitores</p>
     ${comparacao}`;
   el.detalhe.querySelector(".fechar")!.addEventListener("click", () => {
     selecionado = null;
@@ -234,28 +240,14 @@ function renderDetalhe() {
   });
 }
 
-function renderRegioes() {
-  const ufs = atual().ufs;
-  el.regioes.innerHTML = `<h2>Por região</h2>` + Object.entries(REGIOES)
-    .map(([nome, siglas]) => {
-      const v = somar(siglas.map((s) => ufs[s]).filter(Boolean));
-      const f = fatiaLula(v);
-      const lider = f == null ? null : f >= 0.5 ? "13" : "22";
-      return `<div class="regiao">
-        <div class="regiao-topo"><span>${nome}</span>${lider ? `<b class="cor-${lider}">${CANDIDATOS[lider].curto} ${fmt.pct1(v[lider] / v.validos)}</b>` : "<b>—</b>"}</div>
-        <div class="barra fina"><span class="barra-13" style="width:${(f ?? 0.5) * 100}%"></span><span class="barra-22" style="width:${(1 - (f ?? 0.5)) * 100}%"></span><i class="barra-meio"></i></div>
-        ${segundo ? `<small>${fmt.pct1(pctSecoes(v) / 100)} apurado</small>` : ""}
-      </div>`;
-    })
-    .join("");
-}
-
 function renderTudo() {
   renderStatus();
   renderPlacar();
   renderLegenda();
   renderDicas();
-  renderRegioes();
+  renderRegioes(el.regioes, atual().ufs, !!segundo);
+  renderAtualizacoes(el.atualizacoes, eventos);
+  renderCurva(el.curva, historico);
   renderDetalhe();
   pintarMapa();
 }
@@ -385,13 +377,26 @@ document.addEventListener("fullscreenchange", () => {
   botaoTelaCheia.querySelector("span")!.textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
 });
 
-async function atualizar() {
-  const novo = await carregar(URL_2T);
-  if (novo) {
-    segundo = novo;
-    renderTudo();
-  }
+/** Busca o 2º turno; devolve false se ainda não há dados */
+async function carregarSegundo() {
+  const [novo, hist, evs] = await Promise.all([
+    carregar(URL_2T),
+    carregar<Ponto[]>(`${PASTA_2T}historico.json`),
+    carregar<Evento[]>(`${PASTA_2T}eventos.json`),
+  ]);
+  if (!novo) return false;
+  segundo = novo;
+  historico = hist;
+  eventos = evs;
+  return true;
 }
+
+async function atualizar() {
+  if (await carregarSegundo()) renderTudo();
+}
+
+// A curva se ajusta à largura do cartão
+new ResizeObserver(() => renderCurva(el.curva, historico)).observe(el.curva);
 
 async function iniciar() {
   const [p] = await Promise.all([carregar(URL_1T), mapa.carregar(`${BASE}dados/malha.topo.json`)]);
@@ -400,7 +405,7 @@ async function iniciar() {
     return;
   }
   primeiro = p;
-  segundo = await carregar(URL_2T);
+  await carregarSegundo();
   renderTudo();
   setInterval(atualizar, INTERVALO_MS);
   // Contagem regressiva no cabeçalho enquanto o 2º turno não começa
