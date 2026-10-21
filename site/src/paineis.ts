@@ -13,7 +13,7 @@ export function renderRegioes(alvo: HTMLElement, ufs: Record<string, Votos>, aoV
     // "faltam" conta eleitores das seções ainda não apuradas
     const faltam = v.eleitores * (1 - pct / 100);
     const sub = aoVivo
-      ? pct >= 100 ? "100% apurado" : `${Math.floor(pct)}% · faltam ${fmt.milhoes(faltam).replace(" milhões", " mi")}`
+      ? pct >= 100 ? "100% apurado" : `${Math.floor(pct)}% · faltam ${fmt.milhoes(faltam).replace(/ milh(ão|ões)/, " mi")}`
       : "1º turno · final";
     return `<div class="regiao">
       <div class="regiao-info">

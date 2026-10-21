@@ -70,6 +70,19 @@ coletor/.venv/Scripts/python coletor/coletar.py --turno 2t --intervalo 30
 A cada rodada o coletor lê o andamento das 28 UFs (27 + exterior) e baixa só os municípios
 que tiveram seções novas.
 
+### Ensaio com dados simulados
+
+Para ver o site "ao vivo" antes da eleição, o simulador inventa uma apuração do 2º turno a
+partir do resultado real do 1º (os números são fictícios):
+
+```bash
+coletor/.venv/Scripts/python coletor/simular.py                      # noite inteira, um passo a cada 2 s
+coletor/.venv/Scripts/python coletor/simular.py --intervalo 0 --ate 0.4   # para no meio da apuração
+coletor/.venv/Scripts/python coletor/simular.py --limpar             # apaga a simulação
+```
+
+Sempre rode `--limpar` antes de publicar o site.
+
 ## Observações sobre os dados
 
 - Os totais do 1º turno somados por município batem exatamente com o total do Brasil
@@ -81,7 +94,7 @@ que tiveram seções novas.
 ## Estrutura
 
 ```
-coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py, fotos.py
+coletor/   tse.py (cliente do feed), preparar_base.py, coletar.py, saida.py, simular.py, fotos.py
 site/      Vite + TypeScript + d3-geo; mapa em canvas
 analise/   notebooks (depois da eleição)
 dados/     downloads e arquivo bruto (fora do git)

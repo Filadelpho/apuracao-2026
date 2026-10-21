@@ -1,8 +1,9 @@
 import "./estilo.css";
-import { CANDIDATOS, NOMES_UF, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, taxaComparecimento, type Estado, type Evento, type Ponto, type Votos } from "./dados";
+import { CANDIDATOS, NOMES_UF, UF_IBGE, carregar, fatiaLula, fmt, horaCurta, pctSecoes, taxaComparecimento, type Estado, type Evento, type Ponto, type Votos } from "./dados";
 import { Mapa } from "./mapa";
 import { montarBusca, type Item } from "./busca";
 import { renderAtualizacoes, renderCurva, renderRegioes } from "./paineis";
+import { LinhaTempo } from "./linhaTempo";
 
 type Modo = "municipios" | "estados" | "vantagem" | "mudanca" | "candidato";
 type Numero = "13" | "22";
@@ -124,9 +125,12 @@ function contagemRegressiva() {
 
 function renderStatus() {
   el.pontoVivo.classList.toggle("ativo", !!segundo);
-  if (segundo) {
+  const revendo = linhaTempo.escolhido;
+  if (revendo) {
+    el.status.textContent = `Revendo ${horaCurta(revendo.hora)} · ${fmt.pct1(revendo.secoes / 100)} das seções`;
+  } else if (segundo) {
     const pct = pctSecoes(segundo.br);
-    const hora = segundo.gerado ? `Atualizado às ${segundo.gerado.slice(-8, -3).replace(":", "h")} · ` : "";
+    const hora = segundo.gerado ? `Atualizado às ${horaCurta(segundo.gerado)} · ` : "";
     el.status.textContent = `${hora}${fmt.pct1(pct / 100)} das seções`;
     el.turno.textContent = "2º turno · 25 de outubro";
   } else {
@@ -136,7 +140,11 @@ function renderStatus() {
 }
 
 function renderPlacar() {
-  const br = atual().br;
+  // Revendo outro horário: o histórico só tem os votos dos dois, então o comparecimento fica em branco
+  const revendo = linhaTempo.escolhido;
+  const br: Votos = revendo
+    ? { "13": revendo["13"], "22": revendo["22"], outros: 0, validos: revendo.validos, eleitores: 0, comparecimento: 0, secoes: revendo.secoes }
+    : atual().br;
   const lado = (n: "13" | "22") => {
     const c = CANDIDATOS[n];
     const pct = br.validos ? br[n] / br.validos : 0;
@@ -154,10 +162,13 @@ function renderPlacar() {
   const fatia = fatiaLula(br) ?? 0.5;
   const titulo = br["13"] + br["22"] === 0
     ? "Aguardando os primeiros votos"
-    : `<em class="cor-${lider}">${CANDIDATOS[lider].nome}</em> ${segundo ? "lidera" : "terminou na frente"} por ${fmt.milhoes(diferenca)} de votos`;
+    : `<em class="cor-${lider}">${CANDIDATOS[lider].nome}</em> ${revendo ? "liderava" : segundo ? "lidera" : "terminou na frente"} por ${fmt.votos(diferenca)}`;
+  const rotulo = revendo
+    ? `Presidente · Brasil · às ${horaCurta(revendo.hora)}, com ${fmt.pct1(revendo.secoes / 100)} das seções`
+    : `Presidente · Brasil${segundo ? "" : " · 1º turno"}`;
 
   el.placar.innerHTML = `
-    <p class="placar-rotulo">Presidente · Brasil${segundo ? "" : " · 1º turno"}</p>
+    <p class="placar-rotulo">${rotulo}</p>
     <h2 class="placar-titulo">${titulo}</h2>
     <div class="placar-cands">${lado("13")}${lado("22")}</div>
     <div class="barra" role="img" aria-label="Lula ${fmt.pct1(fatia)} contra Flávio ${fmt.pct1(1 - fatia)} no confronto direto">
@@ -166,7 +177,7 @@ function renderPlacar() {
       <i class="barra-meio"></i>
     </div>
     <dl class="placar-numeros">
-      <div><dt>Comparecimento</dt><dd>${taxaComparecimento(br) != null ? fmt.pct1(taxaComparecimento(br)!) : "—"}</dd></div>
+      <div><dt>Comparecimento</dt><dd>${!revendo && taxaComparecimento(br) != null ? fmt.pct1(taxaComparecimento(br)!) : "—"}</dd></div>
       <div><dt>Votos válidos</dt><dd>${fmt.num(br.validos)}</dd></div>
       ${segundo ? "" : `<div><dt>Outros candidatos</dt><dd>${br.validos ? fmt.pct1(br.outros / br.validos) : "—"}</dd></div>`}
     </dl>`;
@@ -247,7 +258,8 @@ function renderTudo() {
   renderDicas();
   renderRegioes(el.regioes, atual().ufs, !!segundo);
   renderAtualizacoes(el.atualizacoes, eventos);
-  renderCurva(el.curva, historico);
+  linhaTempo.atualizar(historico);
+  renderCurva(el.curva, historico, linhaTempo.escolhido ?? undefined);
   renderDetalhe();
   pintarMapa();
 }
@@ -255,6 +267,14 @@ function renderTudo() {
 // ---------- início ----------
 
 const mapa = new Mapa(document.getElementById("mapa")!);
+
+const linhaTempo = new LinhaTempo(document.getElementById("linha-tempo")!);
+linhaTempo.onMudar = () => {
+  document.body.classList.toggle("revendo", !!linhaTempo.escolhido);
+  renderStatus();
+  renderPlacar();
+  renderCurva(el.curva, historico, linhaTempo.escolhido ?? undefined);
+};
 /** No modo Estados, passar ou clicar num município vale pelo estado inteiro */
 const paraModo = (codigo: string | null) =>
   codigo && modo === "estados" && !codigo.startsWith("uf:") ? `uf:${UF_IBGE[codigo.slice(0, 2)]}` : codigo;
@@ -396,7 +416,7 @@ async function atualizar() {
 }
 
 // A curva se ajusta à largura do cartão
-new ResizeObserver(() => renderCurva(el.curva, historico)).observe(el.curva);
+new ResizeObserver(() => renderCurva(el.curva, historico, linhaTempo.escolhido ?? undefined)).observe(el.curva);
 
 async function iniciar() {
   const [p] = await Promise.all([carregar(URL_1T), mapa.carregar(`${BASE}dados/malha.topo.json`)]);

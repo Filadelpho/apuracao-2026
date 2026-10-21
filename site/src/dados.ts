@@ -118,5 +118,11 @@ export const fmt = {
   pct: (x: number) => pf.format(x * 100) + "%",
   pct1: (x: number) => pf1.format(x * 100) + "%",
   pontos: (x: number) => pf1.format(Math.abs(x) * 100) + " pontos",
-  milhoes: (n: number) => (n >= 1e6 ? pf1.format(n / 1e6) + " milhões" : n >= 1e3 ? nf.format(Math.round(n / 1e3)) + " mil" : nf.format(n)),
+  milhoes: (n: number) =>
+    n >= 1e6 ? pf1.format(n / 1e6) + (n < 2e6 ? " milhão" : " milhões") : n >= 1e3 ? nf.format(Math.round(n / 1e3)) + " mil" : nf.format(n),
+  /** "2,2 milhões de votos", "77 mil votos", "1 voto" */
+  votos: (n: number) => {
+    const texto = fmt.milhoes(n);
+    return texto.endsWith("ão") || texto.endsWith("ões") ? `${texto} de votos` : `${texto} ${n === 1 ? "voto" : "votos"}`;
+  },
 };
