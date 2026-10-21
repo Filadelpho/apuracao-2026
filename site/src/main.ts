@@ -1,5 +1,5 @@
 import "./estilo.css";
-import { CANDIDATOS, REGIOES, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
+import { CANDIDATOS, NOMES_UF, REGIOES, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
 import { Mapa } from "./mapa";
 
 type Modo = "resultado" | "mudanca";
@@ -64,6 +64,15 @@ function pintor(codigo: string) {
   if (modo === "resultado") return corResultado(agora);
   return segundo ? corMudanca(agora, primeiro.municipios[codigo]) : null;
 }
+
+function pintorUf(uf: string) {
+  const agora = atual().ufs[uf];
+  if (!agora) return null;
+  if (modo === "resultado") return corResultado(agora);
+  return segundo ? corMudanca(agora, primeiro.ufs[uf]) : null;
+}
+
+const pintarMapa = () => mapa.pintar(pintor, pintorUf);
 
 // ---------- renderização ----------
 
@@ -148,13 +157,24 @@ function linhaCandidatos(v: Votos) {
     .join("");
 }
 
+/** Resultado de um código do mapa: município (código IBGE) ou estado ("uf:<sigla>") */
+function buscarArea(estado: Estado, codigo: string): { nome: string; uf: string; v: Votos } | null {
+  if (codigo.startsWith("uf:")) {
+    const uf = codigo.slice(3);
+    return estado.ufs[uf] ? { nome: NOMES_UF[uf], uf, v: estado.ufs[uf] } : null;
+  }
+  const m = estado.municipios[codigo];
+  return m ? { nome: nomeProprio(m.nome), uf: m.uf, v: m } : null;
+}
+
 function renderDetalhe() {
-  const m = selecionado ? atual().municipios[selecionado] : null;
-  if (!m) {
+  const area = selecionado ? buscarArea(atual(), selecionado) : null;
+  if (!area) {
     el.detalhe.hidden = true;
     return;
   }
-  const antes = primeiro.municipios[selecionado!];
+  const m = area.v;
+  const antes = buscarArea(primeiro, selecionado!)?.v;
   let comparacao = "";
   if (segundo && antes) {
     const f1 = fatiaLula(antes), f2 = fatiaLula(m);
@@ -166,7 +186,7 @@ function renderDetalhe() {
   el.detalhe.hidden = false;
   el.detalhe.innerHTML = `
     <button class="fechar" aria-label="Fechar">×</button>
-    <h3>${m.nome} <small>${m.uf.toUpperCase()}</small></h3>
+    <h3>${area.nome} ${selecionado!.startsWith("uf:") ? "" : `<small>${area.uf.toUpperCase()}</small>`}</h3>
     ${segundo ? `<p class="nota">${fmt.pct1(pctSecoes(m) / 100)} das seções apuradas</p>` : ""}
     ${linhaCandidatos(m)}
     <p class="nota">Comparecimento ${m.eleitores ? fmt.pct1(m.comparecimento / m.eleitores) : "—"} · ${fmt.num(m.eleitores)} eleitores</p>
@@ -200,7 +220,7 @@ function renderTudo() {
   renderDicas();
   renderRegioes();
   renderDetalhe();
-  mapa.pintar(pintor);
+  pintarMapa();
 }
 
 // ---------- início ----------
@@ -220,13 +240,18 @@ const nomeProprio = (nome: string) =>
     .replace(/D'(\p{L})/gu, (_, letra) => "d'" + letra.toUpperCase());
 
 mapa.onPassar = (codigo, x, y) => {
-  const uf = codigo && UF_IBGE[codigo.slice(0, 2)];
-  if (!uf) {
+  if (!codigo) {
     dicaMapa.hidden = true;
     return;
   }
-  const municipio = atual().municipios[codigo];
-  dicaMapa.innerHTML = `<b>${uf.toUpperCase()}</b>${municipio ? `<span>${nomeProprio(municipio.nome)}</span>` : ""}`;
+  if (codigo.startsWith("uf:")) {
+    const uf = codigo.slice(3);
+    dicaMapa.innerHTML = uf === "zz" ? `<b>Exterior</b>` : `<b>${uf.toUpperCase()}</b><span>${NOMES_UF[uf]}</span>`;
+  } else {
+    const uf = UF_IBGE[codigo.slice(0, 2)];
+    const municipio = atual().municipios[codigo];
+    dicaMapa.innerHTML = `<b>${uf.toUpperCase()}</b>${municipio ? `<span>${nomeProprio(municipio.nome)}</span>` : ""}`;
+  }
   dicaMapa.hidden = false;
   // Perto das bordas, a caixa vai para o outro lado do cursor para não ser cortada
   const caixa = dicaMapa.parentElement!;
@@ -240,7 +265,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-modo]").forEach((b) =>
     modo = b.dataset.modo as Modo;
     document.querySelectorAll("[data-modo]").forEach((o) => o.setAttribute("aria-selected", String(o === b)));
     renderLegenda();
-    mapa.pintar(pintor);
+    pintarMapa();
   }),
 );
 document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach((b) =>

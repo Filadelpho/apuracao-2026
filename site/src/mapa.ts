@@ -3,6 +3,7 @@ import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { feature, mesh } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
+import { UF_IBGE } from "./dados";
 
 type Forma = {
   codigo: string;
@@ -11,25 +12,44 @@ type Forma = {
   caixa: [[number, number], [number, number]];
 };
 
-export type Pintor = (codigo: string) => string | null;
+/** Etiqueta fora do mapa para estado pequeno demais para ter a sigla dentro */
+type Caixinha = { uf: string; texto: string; x: number; y: number; l: number; a: number; ancora?: [number, number] };
 
-/** Mapa de municípios em canvas: 5.570 polígonos são leves demais para SVG no celular. */
+/** Recebe o código IBGE do município e devolve a cor (null = sem dado) */
+export type Pintor = (codigo: string) => string | null;
+/** Recebe a sigla da UF (ou "zz" para o exterior) e devolve a cor da caixinha */
+export type PintorUf = (uf: string) => string | null;
+
+// Estados com etiqueta do lado de fora, de cima para baixo, em dois grupos
+const CAIXINHAS = [["rn", "pb", "pe", "al", "se"], ["es", "rj"]];
+const ALTURA_CAIXA = 26;
+const PASSO_CAIXA = 33;
+const X_CAIXA = 872;
+const LARGURA_CAIXA = 70;
+
+/**
+ * Mapa de municípios em canvas: 5.570 polígonos são leves demais para SVG no celular.
+ * Códigos devolvidos em onPassar/onSelecionar: código IBGE do município ou "uf:<sigla>".
+ */
 export class Mapa {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private formas: Forma[] = [];
   private bordasUf = new Path2D();
+  private rotulos: { uf: string; x: number; y: number }[] = [];
+  private caixinhas: Caixinha[] = [];
   private transform: ZoomTransform = zoomIdentity;
   private comportamento!: ZoomBehavior<HTMLCanvasElement, unknown>;
   private largura = 0;
   private altura = 0;
   private pintor: Pintor = () => null;
+  private pintorUf: PintorUf = () => null;
   private destaque: string | null = null;
   private projecao = geoMercator();
-  private cores = { vazio: "", borda: "", bordaUf: "", destaque: "" };
+  private cores = { vazio: "", borda: "", bordaUf: "", destaque: "", texto2: "", linha: "" };
 
   onSelecionar: (codigo: string | null) => void = () => {};
-  /** Mouse sobre um município (x, y relativos ao recipiente); null ao sair */
+  /** Mouse sobre o mapa (x, y relativos ao recipiente); null ao sair */
   onPassar: (codigo: string | null, x: number, y: number) => void = () => {};
 
   constructor(private recipiente: HTMLElement) {
@@ -40,10 +60,11 @@ export class Mapa {
   async carregar(url: string) {
     const topo = (await (await fetch(url)).json()) as Topology<{
       municipios: GeometryCollection<{ codarea: string }>;
-      ufs: GeometryCollection;
+      ufs: GeometryCollection<{ uf: string }>;
     }>;
     const municipios = feature(topo, topo.objects.municipios);
-    this.projecao.fitSize([1000, 1000], municipios);
+    // A faixa da direita do quadro fica livre para as caixinhas dos estados pequenos
+    this.projecao.fitExtent([[10, 10], [850, 990]], municipios);
     const caminho = geoPath(this.projecao);
 
     this.formas = municipios.features.map((f) => ({
@@ -53,6 +74,7 @@ export class Mapa {
       caixa: caminho.bounds(f),
     }));
     this.bordasUf = new Path2D(caminho(mesh(topo, topo.objects.ufs)) ?? "");
+    this.montarRotulos(feature(topo, topo.objects.ufs).features, caminho);
 
     this.comportamento = zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([1, 40])
@@ -90,9 +112,30 @@ export class Mapa {
     select(this.canvas).call(this.comportamento.scaleBy, fator);
   }
 
-  pintar(pintor: Pintor) {
+  pintar(pintor: Pintor, pintorUf: PintorUf) {
     this.pintor = pintor;
+    this.pintorUf = pintorUf;
     this.desenhar();
+  }
+
+  private montarRotulos(ufs: GeoJSON.Feature<GeoJSON.Geometry, { uf: string }>[], caminho: ReturnType<typeof geoPath>) {
+    const centros = new Map<string, [number, number]>();
+    for (const f of ufs) centros.set(UF_IBGE[f.properties.uf], caminho.centroid(f));
+
+    const deFora = new Set(CAIXINHAS.flat());
+    this.rotulos = [...centros].filter(([uf]) => !deFora.has(uf)).map(([uf, [x, y]]) => ({ uf, x, y }));
+
+    this.caixinhas = [];
+    for (const grupo of CAIXINHAS) {
+      // O grupo começa na altura do primeiro estado, para as linhas saírem quase retas
+      let y = centros.get(grupo[0])![1] - ALTURA_CAIXA / 2 - 6;
+      for (const uf of grupo) {
+        this.caixinhas.push({ uf, texto: uf.toUpperCase(), x: X_CAIXA, y, l: LARGURA_CAIXA, a: ALTURA_CAIXA, ancora: centros.get(uf) });
+        y += PASSO_CAIXA;
+      }
+    }
+    const ultima = this.caixinhas[this.caixinhas.length - 1];
+    this.caixinhas.push({ uf: "zz", texto: "Exterior", x: X_CAIXA, y: ultima.y + PASSO_CAIXA + 10, l: LARGURA_CAIXA, a: ALTURA_CAIXA });
   }
 
   private redimensionar() {
@@ -103,11 +146,14 @@ export class Mapa {
     this.canvas.height = Math.round(this.altura * dpr);
     this.comportamento.extent([[0, 0], [this.largura, this.altura]]).translateExtent([[-200, -200], [this.largura + 200, this.altura + 200]]);
     const css = getComputedStyle(document.documentElement);
+    const v = (nome: string) => css.getPropertyValue(nome).trim();
     this.cores = {
-      vazio: css.getPropertyValue("--mapa-vazio").trim(),
-      borda: css.getPropertyValue("--mapa-borda").trim(),
-      bordaUf: css.getPropertyValue("--mapa-borda-uf").trim(),
-      destaque: css.getPropertyValue("--texto").trim(),
+      vazio: v("--mapa-vazio"),
+      borda: v("--mapa-borda"),
+      bordaUf: v("--mapa-borda-uf"),
+      destaque: v("--texto"),
+      texto2: v("--texto-2"),
+      linha: v("--linha"),
     };
     this.desenhar();
   }
@@ -149,6 +195,53 @@ export class Mapa {
       ctx.strokeStyle = this.cores.destaque;
       ctx.stroke(marcado.caminho);
     }
+
+    this.desenharRotulos(k);
+  }
+
+  private desenharRotulos(k: number) {
+    const { ctx } = this;
+    // Texto com tamanho fixo na tela, qualquer que seja o zoom
+    const fonte = (px: number, peso = 600) => `${peso} ${px / k}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+
+    ctx.font = fonte(11);
+    for (const r of this.rotulos) {
+      ctx.lineWidth = 3 / k;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.strokeText(r.uf.toUpperCase(), r.x, r.y);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.fillText(r.uf.toUpperCase(), r.x, r.y);
+    }
+
+    // As caixinhas acompanham o mapa, mas o tamanho fica fixo na tela
+    const s = 1 / this.transform.k;
+    for (const c of this.caixinhas) {
+      const l = c.l * s, a = c.a * s;
+      if (c.ancora) {
+        ctx.beginPath();
+        ctx.moveTo(c.ancora[0], c.ancora[1]);
+        ctx.lineTo(c.x, c.y + a / 2);
+        ctx.lineWidth = 1 / k;
+        ctx.strokeStyle = this.cores.texto2;
+        ctx.stroke();
+      }
+      const cor = this.pintorUf(c.uf);
+      ctx.beginPath();
+      ctx.roundRect(c.x, c.y, l, a, 6 * s);
+      ctx.fillStyle = cor ?? this.cores.vazio;
+      ctx.fill();
+      if (this.destaque === `uf:${c.uf}`) {
+        ctx.lineWidth = 2 / k;
+        ctx.strokeStyle = this.cores.destaque;
+        ctx.stroke();
+      }
+      ctx.font = fonte(c.uf === "zz" ? 11 : 12);
+      ctx.fillStyle = cor ? "rgba(255, 255, 255, 0.95)" : this.cores.texto2;
+      ctx.fillText(c.texto, c.x + l / 2, c.y + a / 2 + 0.5 / k);
+    }
   }
 
   private codigoEm(e: MouseEvent): string | null {
@@ -157,6 +250,12 @@ export class Mapa {
     const [tx, ty] = this.transform.invert([e.clientX - r.left, e.clientY - r.top]);
     const x = (tx - dx) / escala;
     const y = (ty - dy) / escala;
+
+    const s = 1 / this.transform.k;
+    for (const c of this.caixinhas) {
+      if (x >= c.x && x <= c.x + c.l * s && y >= c.y && y <= c.y + c.a * s) return `uf:${c.uf}`;
+    }
+
     const ponto = this.projecao.invert!([x, y]);
     if (!ponto) return null;
     for (const f of this.formas) {
