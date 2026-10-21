@@ -40,8 +40,18 @@
       <section class="cartao mapa-bloco">
         <div class="mapa-controles">
           <div class="abas" role="tablist" aria-label="O que o mapa mostra">
-            <button role="tab" data-modo="resultado" aria-selected="true">Quem lidera</button>
+            <button role="tab" data-modo="municipios" aria-selected="true">Municípios</button>
+            <button role="tab" data-modo="estados" aria-selected="false">Estados</button>
+            <button role="tab" data-modo="vantagem" aria-selected="false">Vantagem</button>
             <button role="tab" data-modo="mudanca" aria-selected="false">Mudança vs. 1º turno</button>
+            <button role="tab" data-modo="candidato" aria-selected="false" aria-haspopup="menu">
+              <span id="rotulo-candidato">Candidato</span>
+              <svg class="seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+          </div>
+          <div class="menu" id="menu-candidato" role="menu" hidden>
+            <button role="menuitem" data-candidato="13"><i class="ponto cor-13"></i>Lula</button>
+            <button role="menuitem" data-candidato="22"><i class="ponto cor-22"></i>Flávio Bolsonaro</button>
           </div>
           <div class="legenda" id="legenda"></div>
         </div>
