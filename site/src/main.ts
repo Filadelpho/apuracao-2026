@@ -1,6 +1,7 @@
 import "./estilo.css";
 import { CANDIDATOS, NOMES_UF, REGIOES, UF_IBGE, carregar, fatiaLula, fmt, pctSecoes, somar, type Estado, type Votos } from "./dados";
 import { Mapa } from "./mapa";
+import { montarBusca, type Item } from "./busca";
 
 type Modo = "municipios" | "estados" | "vantagem" | "mudanca" | "candidato";
 type Numero = "13" | "22";
@@ -335,6 +336,28 @@ document.querySelectorAll<HTMLButtonElement>("[data-modo]").forEach((b) =>
 );
 document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach((b) =>
   b.addEventListener("click", () => mapa.zoomPor(b.dataset.zoom === "in" ? 2 : 0.5)),
+);
+
+let itensBusca: Item[] = [];
+montarBusca(
+  () => {
+    if (!itensBusca.length) {
+      // Monta a lista uma vez: estados primeiro, depois os municípios (o exterior fica de fora)
+      const estados = Object.entries(NOMES_UF)
+        .filter(([uf]) => uf !== "zz")
+        .map(([uf, nome]) => ({ codigo: `uf:${uf}`, nome, detalhe: "Estado", peso: Infinity }));
+      const municipios = Object.entries(primeiro.municipios)
+        .filter(([codigo]) => !codigo.startsWith("zz"))
+        .map(([codigo, m]) => ({ codigo, nome: nomeProprio(m.nome), detalhe: m.uf.toUpperCase(), peso: m.eleitores }));
+      itensBusca = [...estados, ...municipios];
+    }
+    return itensBusca;
+  },
+  (item) => {
+    mapa.focar(item.codigo);
+    selecionado = item.codigo;
+    renderDetalhe();
+  },
 );
 
 function avisar(texto: string) {

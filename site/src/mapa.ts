@@ -112,6 +112,23 @@ export class Mapa {
     select(this.canvas).call(this.comportamento.scaleBy, fator);
   }
 
+  /** Aproxima um município (código IBGE) ou um estado ("uf:<sigla>") e o destaca */
+  focar(codigo: string) {
+    const ibgeUf = codigo.startsWith("uf:") ? Object.keys(UF_IBGE).find((k) => UF_IBGE[k] === codigo.slice(3)) : null;
+    const alvo = this.formas.filter((f) => (ibgeUf ? f.codigo.startsWith(ibgeUf) : f.codigo === codigo));
+    if (!alvo.length) return;
+    const x0 = Math.min(...alvo.map((f) => f.caixa[0][0])), y0 = Math.min(...alvo.map((f) => f.caixa[0][1]));
+    const x1 = Math.max(...alvo.map((f) => f.caixa[1][0])), y1 = Math.max(...alvo.map((f) => f.caixa[1][1]));
+
+    const { escala, dx, dy } = this.base();
+    const largura = Math.max((x1 - x0) * escala, 1), altura = Math.max((y1 - y0) * escala, 1);
+    const k = Math.min(12, Math.max(1, 0.45 * Math.min(this.largura / largura, this.altura / altura)));
+    const cx = dx + ((x0 + x1) / 2) * escala, cy = dy + ((y0 + y1) / 2) * escala;
+    const t = zoomIdentity.translate(this.largura / 2, this.altura / 2).scale(k).translate(-cx, -cy);
+    this.destaque = ibgeUf ? null : codigo;
+    select(this.canvas).call(this.comportamento.transform, t);
+  }
+
   pintar(pintor: Pintor, pintorUf: PintorUf) {
     this.pintor = pintor;
     this.pintorUf = pintorUf;
