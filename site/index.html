@@ -15,13 +15,29 @@
         <h1>Apuração 2026</h1>
         <span class="turno" id="turno">2º turno · 25 de outubro</span>
       </div>
-      <p class="status" id="status">Carregando…</p>
+      <div class="topo-acoes">
+        <p class="status"><i class="ponto-vivo" id="ponto-vivo"></i><span id="status">Carregando…</span></p>
+        <span class="selo">Fonte: TSE</span>
+        <button class="botao botao-icone" id="compartilhar" aria-label="Compartilhar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></svg>
+        </button>
+        <button class="botao so-notebook" id="tela-cheia">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+          <span>Tela cheia</span>
+        </button>
+      </div>
     </header>
 
     <main class="grade">
-      <section class="placar" id="placar" aria-live="polite"></section>
+      <div class="coluna coluna-esq">
+        <section class="cartao placar" id="placar" aria-live="polite"></section>
+        <section class="cartao curva" id="curva">
+          <h2>Ao longo da apuração</h2>
+          <p class="vazio">A curva começa com 1% das seções apuradas.</p>
+        </section>
+      </div>
 
-      <section class="mapa-bloco">
+      <section class="cartao mapa-bloco">
         <div class="mapa-controles">
           <div class="abas" role="tablist" aria-label="O que o mapa mostra">
             <button role="tab" data-modo="resultado" aria-selected="true">Quem lidera</button>
@@ -40,12 +56,19 @@
         <aside class="detalhe" id="detalhe" hidden></aside>
       </section>
 
-      <section class="regioes" id="regioes"></section>
+      <div class="coluna coluna-dir">
+        <section class="cartao regioes" id="regioes"></section>
+        <section class="cartao atualizacoes" id="atualizacoes">
+          <h2>Últimas atualizações</h2>
+          <p class="vazio">Os primeiros números saem às 17h.</p>
+        </section>
+      </div>
     </main>
 
     <footer class="rodape">
       Fonte: TSE (resultados.tse.jus.br) · Malha municipal: IBGE · Projeto independente, sem vínculo com o TSE.
     </footer>
+    <div class="aviso" id="aviso" role="status" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

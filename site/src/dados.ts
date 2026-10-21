@@ -21,8 +21,8 @@ export type Estado = {
 };
 
 export const CANDIDATOS = {
-  "13": { nome: "Lula", partido: "PT", cor: "var(--lula)" },
-  "22": { nome: "Flávio Bolsonaro", partido: "PL", cor: "var(--flavio)" },
+  "13": { nome: "Lula", curto: "Lula", partido: "PT", cor: "var(--lula)" },
+  "22": { nome: "Flávio Bolsonaro", curto: "Flávio", partido: "PL", cor: "var(--flavio)" },
 } as const;
 
 export const REGIOES: Record<string, string[]> = {

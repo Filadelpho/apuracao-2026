@@ -48,41 +48,90 @@ body {
 }
 
 button { font: inherit; color: inherit; }
+h2 { font: 500 17px/1.3 var(--sans); margin: 0 0 10px; }
+
+/* ---------- cabeçalho ---------- */
 
 .topo {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 4px 24px;
-  padding: 20px 16px 8px;
-  max-width: 1400px;
-  margin: 0 auto;
+  gap: 8px 20px;
+  padding: 16px 16px 8px;
 }
 .marca { display: flex; align-items: baseline; gap: 12px; }
-.marca h1 { font: 600 26px/1 var(--serifa); margin: 0; letter-spacing: -0.01em; }
-.turno, .status { color: var(--texto-2); font-size: 14px; margin: 0; }
-
-.grade {
-  display: grid;
-  gap: 16px;
-  padding: 8px 16px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
+.marca h1 { font: 400 26px/1 var(--serifa); margin: 0; letter-spacing: -0.01em; }
+.turno { color: var(--texto-2); font-size: 14px; }
+.topo-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.status { display: flex; align-items: center; gap: 8px; margin: 0 6px 0 0; font-size: 14px; }
+.ponto-vivo { width: 8px; height: 8px; border-radius: 50%; background: var(--texto-2); flex: none; }
+.ponto-vivo.ativo { background: #3fbf6f; box-shadow: 0 0 0 0 rgba(63, 191, 111, 0.6); animation: pulsar 2s infinite; }
+@keyframes pulsar { 70% { box-shadow: 0 0 0 7px rgba(63, 191, 111, 0); } 100% { box-shadow: 0 0 0 0 rgba(63, 191, 111, 0); } }
+.selo { border: 1px solid var(--linha); border-radius: 8px; padding: 4px 10px; font-size: 14px; }
+.botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--linha);
+  border-radius: 99px;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
 }
-@media (min-width: 960px) {
-  .grade { grid-template-columns: 380px 1fr; align-items: start; }
-  .placar { grid-column: 1; grid-row: 1; }
-  .regioes { grid-column: 1; grid-row: 2; }
-  .mapa-bloco { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; }
+.botao:hover { background: var(--cartao); }
+.botao-icone { width: 36px; padding: 0; justify-content: center; }
+.botao svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- grade: uma coluna no celular, três no notebook ---------- */
+
+.grade { display: flex; flex-direction: column; gap: 12px; padding: 8px 12px 24px; }
+.coluna { display: contents; }
+.placar { order: 1; }
+.mapa-bloco { order: 2; }
+.regioes { order: 3; }
+.atualizacoes { order: 4; }
+.curva { order: 5; }
+
+@media (min-width: 1100px) {
+  .topo { padding: 16px 24px 8px; }
+  .grade {
+    display: grid;
+    grid-template-columns: minmax(300px, 22vw) minmax(0, 1fr) minmax(260px, 20vw);
+    gap: 16px;
+    padding: 8px 24px 16px;
+    height: calc(100vh - 68px);
+    min-height: 640px;
+  }
+  .coluna { display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow-y: auto; }
+  .coluna > *, .mapa-bloco { order: 0; }
+  .placar .cand-pct { font-size: clamp(28px, 2.5vw, 44px); }
+  .placar .placar-titulo { font-size: clamp(22px, 1.9vw, 28px); }
+  .curva, .atualizacoes { flex: 1; min-height: 200px; }
+  .mapa-bloco { display: flex; flex-direction: column; min-height: 0; }
+  .rodape { display: none; }
 }
 
-.placar, .regioes, .mapa-bloco {
+.cartao {
   background: var(--cartao);
   border: 1px solid var(--linha);
   border-radius: var(--raio);
   padding: 20px;
 }
+.vazio { color: var(--texto-2); font-size: 14px; text-align: center; margin: 32px 0; }
+.curva, .atualizacoes { display: flex; flex-direction: column; }
+.curva .vazio, .atualizacoes .vazio { flex: 1; display: grid; place-items: center; }
+
+@media (max-width: 1099px) {
+  .so-notebook { display: none; }
+  .selo { display: none; }
+  .topo-acoes { width: 100%; justify-content: space-between; }
+  .cartao { padding: 16px; }
+}
+
+/* ---------- placar ---------- */
 
 .placar-rotulo { margin: 0 0 6px; color: var(--texto-2); font-size: 13px; }
 .placar-titulo { font: 400 28px/1.15 var(--serifa); margin: 0 0 20px; text-wrap: balance; }
@@ -122,9 +171,11 @@ button { font: inherit; color: inherit; }
 .placar-numeros dt { color: var(--texto-2); font-size: 12px; }
 .placar-numeros dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
 
+/* ---------- mapa ---------- */
+
 .mapa-bloco { position: relative; padding: 12px; }
 .mapa-controles { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 8px; }
-.abas { display: inline-flex; background: var(--fundo); border-radius: 99px; padding: 3px; }
+.abas { display: inline-flex; background: var(--fundo); border-radius: 99px; padding: 3px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .abas button { border: 0; background: none; padding: 6px 12px; white-space: nowrap; border-radius: 99px; cursor: pointer; font-size: 14px; color: var(--texto-2); }
 .abas button[aria-selected="true"] { background: var(--cartao); color: var(--texto); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .abas button[data-dica] { position: relative; }
@@ -157,8 +208,8 @@ button { font: inherit; color: inherit; }
 
 /* No celular, um dedo rola a página; dois dedos movem e aproximam o mapa */
 .mapa { position: relative; aspect-ratio: 1; touch-action: pan-y; }
-@media (min-width: 960px) {
-  .mapa { aspect-ratio: auto; height: min(80vh, 780px); }
+@media (min-width: 1100px) {
+  .mapa { aspect-ratio: auto; flex: 1; min-height: 0; }
 }
 .mapa canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .dica-mapa {
@@ -186,6 +237,7 @@ button { font: inherit; color: inherit; }
   position: absolute;
   right: 16px;
   top: 64px;
+  z-index: 6;
   width: min(300px, calc(100% - 32px));
   background: var(--cartao);
   border: 1px solid var(--linha);
@@ -202,10 +254,24 @@ button { font: inherit; color: inherit; }
 .linha small { grid-column: 2; text-align: right; color: var(--texto-2); font-variant-numeric: tabular-nums; }
 .linha b { font-variant-numeric: tabular-nums; }
 
-.regioes h2 { font: 600 18px var(--serifa); margin: 0 0 8px; }
+/* ---------- regiões ---------- */
+
 .regiao { padding: 10px 0; border-top: 1px solid var(--linha); }
 .regiao-topo { display: flex; justify-content: space-between; gap: 8px; }
 .regiao-topo b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .regiao small { color: var(--texto-2); font-size: 12px; }
 
-.rodape { max-width: 1400px; margin: 0 auto; padding: 0 16px 32px; color: var(--texto-2); font-size: 12px; }
+.rodape { padding: 0 16px 32px; color: var(--texto-2); font-size: 12px; }
+
+.aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 10px 16px;
+  border-radius: 99px;
+  background: var(--texto);
+  color: var(--fundo);
+  font-size: 14px;
+}

@@ -11,6 +11,8 @@ const INTERVALO_MS = 30_000;
 
 const el = {
   status: document.getElementById("status")!,
+  pontoVivo: document.getElementById("ponto-vivo")!,
+  aviso: document.getElementById("aviso")!,
   turno: document.getElementById("turno")!,
   placar: document.getElementById("placar")!,
   legenda: document.getElementById("legenda")!,
@@ -65,13 +67,26 @@ function pintor(codigo: string) {
 
 // ---------- renderização ----------
 
+const INICIO_2T = Date.parse("2026-10-25T17:00:00-03:00");
+const doisDigitos = (n: number) => String(n).padStart(2, "0");
+
+function contagemRegressiva() {
+  let s = Math.max(0, Math.floor((INICIO_2T - Date.now()) / 1000));
+  const dias = Math.floor(s / 86400);
+  s -= dias * 86400;
+  const relogio = `${doisDigitos(Math.floor(s / 3600))}:${doisDigitos(Math.floor((s % 3600) / 60))}:${doisDigitos(s % 60)}`;
+  return dias ? `${dias} ${dias === 1 ? "dia" : "dias"} · ${relogio}` : relogio;
+}
+
 function renderStatus() {
+  el.pontoVivo.classList.toggle("ativo", !!segundo);
   if (segundo) {
     const pct = pctSecoes(segundo.br);
-    el.status.textContent = `${fmt.pct(pct / 100)} das seções apuradas${segundo.gerado ? ` · atualizado às ${segundo.gerado.slice(-8, -3)}` : ""}`;
+    const hora = segundo.gerado ? `Atualizado às ${segundo.gerado.slice(-8, -3).replace(":", "h")} · ` : "";
+    el.status.textContent = `${hora}${fmt.pct1(pct / 100)} das seções`;
     el.turno.textContent = "2º turno · 25 de outubro";
   } else {
-    el.status.textContent = "A apuração do 2º turno começa domingo, às 17h. Até lá, o mapa mostra o resultado final do 1º turno.";
+    el.status.textContent = `2º turno começa em ${contagemRegressiva()}`;
     el.turno.textContent = "1º turno · resultado final";
   }
 }
@@ -170,7 +185,7 @@ function renderRegioes() {
       const f = fatiaLula(v);
       const lider = f == null ? null : f >= 0.5 ? "13" : "22";
       return `<div class="regiao">
-        <div class="regiao-topo"><span>${nome}</span>${lider ? `<b class="cor-${lider}">${CANDIDATOS[lider].nome} ${fmt.pct1(v[lider] / v.validos)}</b>` : "<b>—</b>"}</div>
+        <div class="regiao-topo"><span>${nome}</span>${lider ? `<b class="cor-${lider}">${CANDIDATOS[lider].curto} ${fmt.pct1(v[lider] / v.validos)}</b>` : "<b>—</b>"}</div>
         <div class="barra fina"><span class="barra-13" style="width:${(f ?? 0.5) * 100}%"></span><span class="barra-22" style="width:${(1 - (f ?? 0.5)) * 100}%"></span><i class="barra-meio"></i></div>
         ${segundo ? `<small>${fmt.pct1(pctSecoes(v) / 100)} apurado</small>` : ""}
       </div>`;
@@ -232,6 +247,31 @@ document.querySelectorAll<HTMLButtonElement>("[data-zoom]").forEach((b) =>
   b.addEventListener("click", () => mapa.zoomPor(b.dataset.zoom === "in" ? 2 : 0.5)),
 );
 
+function avisar(texto: string) {
+  el.aviso.textContent = texto;
+  el.aviso.hidden = false;
+  setTimeout(() => (el.aviso.hidden = true), 2500);
+}
+
+document.getElementById("compartilhar")!.addEventListener("click", async () => {
+  const dados = { title: document.title, url: location.href };
+  if (navigator.share) {
+    await navigator.share(dados).catch(() => {});
+  } else {
+    await navigator.clipboard.writeText(location.href);
+    avisar("Link copiado");
+  }
+});
+
+const botaoTelaCheia = document.getElementById("tela-cheia")!;
+botaoTelaCheia.addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+document.addEventListener("fullscreenchange", () => {
+  botaoTelaCheia.querySelector("span")!.textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
+});
+
 async function atualizar() {
   const novo = await carregar(URL_2T);
   if (novo) {
@@ -250,6 +290,8 @@ async function iniciar() {
   segundo = await carregar(URL_2T);
   renderTudo();
   setInterval(atualizar, INTERVALO_MS);
+  // Contagem regressiva no cabeçalho enquanto o 2º turno não começa
+  setInterval(() => !segundo && renderStatus(), 1000);
 }
 
 iniciar();
